@@ -20,8 +20,15 @@ OBB-OBB
 
 To be added:
 
+Physics of momentum.
+
 Sphere-Triangle ,
 Capsule-Triangle ,
 Point-Triangle ,
 OBB-Triangle ,
 Caspule-OBB
+
+What will NOT be included:
+
+Collision response incorporating rotations based on force. Basic collision response and momentum will be included, but the objects will not rotate based on collision, 
+as that math is out of scope of what I want to use this for, and is probably high level college maths lol.

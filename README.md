@@ -13,8 +13,10 @@ Includes:
 Sphere-Sphere ,
 Sphere-Capsule ,
 Sphere-OBB ,
+Sphere-Triangle ,
 Y-AxisBoundCapsule-YAxisBoundCapsule (character) ,
 Capsule-Capsule ,
+Caspule-OBB ,
 Capsule-Y-AxisBoundCapsule ,
 OBB-OBB
 
@@ -22,11 +24,8 @@ To be added:
 
 Physics of momentum.
 
-Sphere-Triangle ,
 Capsule-Triangle ,
-Point-Triangle ,
 OBB-Triangle ,
-Caspule-OBB
 
 What will NOT be included:
 

@@ -4,7 +4,7 @@ using Unity.Collections;
 
 public enum CollisionType
 {
-    SphereSphere , SphereCapsule , SphereOBB , CapsuleLockCapsuleLock , CaspuleCapsule , OBBOBB , SphereTriangle
+    SphereSphere , SphereCapsule , SphereOBB , SphereTriangle , CapsuleLockCapsuleLock , CaspuleCapsule , CapsuleOBB , OBBOBB
 }
 
 public class CollisionTester : MonoBehaviour
@@ -19,34 +19,44 @@ public class CollisionTester : MonoBehaviour
     public float3 rotA;
     public float3 rotB;
 
-    public float3 halfSizeA;
-    public float3 halfSizeB;
-
-    private GameObject shapeA;
-    private GameObject shapeB;
-    private GameObject closestPointMarker;
-    private GameObject[] vertsMarkers;
-    private Color normalColor = Color.black;
-    private Color collisionColor = Color.red;
-    private Color markerColor = Color.blue;
+    public float3 extentsA;
+    public float3 extentsB;
 
     private CollisionType lastCollisionType;
-    private bool collisionFlag = false;
+    private bool isColliding = false;
+
+    private CollisionDisplay display;
 
     private void Start()
     {
-        SetupScene();
+        display = new CollisionDisplay();
+        display.SetupScene( collisionType , drawMarkers );
     }
     private void Update()
     {
-        collisionFlag = false;
+        isColliding = false;
 
         if ( collisionType != lastCollisionType )
-        {
-            lastCollisionType = collisionType;
-            SetupScene();
-        }
+            OnCollisionTypeChange();
 
+        ChooseCollisionFunction();
+
+        display.SetShapeColor( isColliding );
+    }
+
+    private void OnCollisionTypeChange()
+    {
+        lastCollisionType = collisionType;
+        posA = new float3( -1 , -1 , -1 );
+        posB = new float3( 1 , 1 , 1 );
+        rotA = float3.zero;
+        rotB = float3.zero;
+        extentsA = new float3( 1 , 1 , 1 );
+        extentsB = new float3( 1 , 1 , 1 );
+        display.SetupScene( collisionType , drawMarkers );
+    }
+    private void ChooseCollisionFunction()
+    {
         switch ( collisionType )
         {
             case CollisionType.SphereSphere:
@@ -56,7 +66,7 @@ public class CollisionTester : MonoBehaviour
             HandleSphereCapsule();
             break;
             case CollisionType.SphereOBB:
-            HandleSphereOBB();
+            HandleSphereBox();
             break;
             case CollisionType.CapsuleLockCapsuleLock:
             HandleCapsulesLock();
@@ -64,8 +74,11 @@ public class CollisionTester : MonoBehaviour
             case CollisionType.CaspuleCapsule:
             HandleCapsuleCapsule();
             break;
+            case CollisionType.CapsuleOBB:
+            HandleCapsuleBox();
+            break;
             case CollisionType.OBBOBB:
-            HandleOBBOBB();
+            HandeBoxBox();
             break;
             case CollisionType.SphereTriangle:
             HandleSphereTriangle();
@@ -74,152 +87,24 @@ public class CollisionTester : MonoBehaviour
             Debug.Log( "No CollisionType Selected" );
             break;
         }
-
-        if ( collisionFlag )
-        {
-            shapeA.GetComponent<MeshRenderer>().material.color = collisionColor;
-            shapeB.GetComponent<MeshRenderer>().material.color = collisionColor;
-        }
-        else
-        {
-            shapeA.GetComponent<MeshRenderer>().material.color = normalColor;
-            shapeB.GetComponent<MeshRenderer>().material.color = normalColor;
-        }
-    }
-
-    private void SetupScene()
-    {
-        ResetTransform();
-
-        if ( shapeA )
-            Destroy( shapeA );
-        if ( shapeB )
-            Destroy( shapeB );
-        if ( closestPointMarker )
-            Destroy( closestPointMarker );
-
-        switch ( collisionType )
-        {
-            case CollisionType.SphereSphere:
-            SetupSpheres();
-            break;
-            case CollisionType.SphereCapsule:
-            SetupSphereCapsule();
-            break;
-            case CollisionType.SphereOBB:
-            SetupSphereBox();
-            break;
-            case CollisionType.CapsuleLockCapsuleLock:
-            SetupLockedCapsule();
-            break;
-            case CollisionType.CaspuleCapsule:
-            SetupCapsuleCapsule();
-            break;
-            case CollisionType.OBBOBB:
-            SetupBoxBox();
-            break;
-            case CollisionType.SphereTriangle:
-            SetupPointTriangle();
-            break;
-            default:
-            Debug.Log( "No CollisionType Selected" );
-            break;
-        }
-
-        if ( shapeA )
-        {
-            Material material = new Material( Shader.Find( "Standard" ) );
-            material.color = normalColor;
-            shapeA.GetComponent<MeshRenderer>().material = material;
-        }
-        if ( shapeB )
-        {
-            Material material = new Material( Shader.Find( "Standard" ) );
-            material.color = normalColor;
-            shapeB.GetComponent<MeshRenderer>().material = material;
-        }
-
-        if ( drawMarkers )
-        {
-            closestPointMarker = GameObject.CreatePrimitive( PrimitiveType.Sphere );
-            Material material = new Material( Shader.Find( "Standard" ) );
-            material.color = markerColor;
-            closestPointMarker.GetComponent<MeshRenderer>().material = material;
-        }
-    }
-    private void SetupSpheres()
-    {
-        shapeA = GameObject.CreatePrimitive( PrimitiveType.Sphere );
-        shapeB = GameObject.CreatePrimitive( PrimitiveType.Sphere );
-    }
-    private void SetupLockedCapsule()
-    {
-        shapeA = GameObject.CreatePrimitive( PrimitiveType.Capsule );
-        shapeB = GameObject.CreatePrimitive( PrimitiveType.Capsule );
-    }
-    private void SetupCapsuleCapsule()
-    {
-        shapeA = GameObject.CreatePrimitive( PrimitiveType.Capsule );
-        shapeB = GameObject.CreatePrimitive( PrimitiveType.Capsule );
-    }
-    private void SetupBoxBox()
-    {
-        shapeA = GameObject.CreatePrimitive( PrimitiveType.Cube );
-        shapeB = GameObject.CreatePrimitive( PrimitiveType.Cube );
-    }
-    private void SetupSphereCapsule()
-    {
-        shapeA = GameObject.CreatePrimitive( PrimitiveType.Sphere );
-        shapeB = GameObject.CreatePrimitive( PrimitiveType.Capsule );
-    }
-    private void SetupSphereBox()
-    {
-        shapeA = GameObject.CreatePrimitive( PrimitiveType.Sphere );
-        shapeB = GameObject.CreatePrimitive( PrimitiveType.Cube );
-    }
-    private void SetupPointTriangle()
-    {
-        shapeA = GameObject.CreatePrimitive( PrimitiveType.Sphere );
-        shapeB = new GameObject();
-        shapeB.transform.position = posB;
-        shapeB.transform.rotation = quaternion.EulerXYZ( rotB.x , rotB.y + ColPhysics.DegreesToRadians( 180 ) , rotB.z );
-        shapeB.transform.rotation = quaternion.EulerXYZ( rotB.x , rotB.y + ColPhysics.DegreesToRadians( 180 ) , rotB.z );
-        SetupTriangleMesh();
-        vertsMarkers = new GameObject[ 3 ];
-        for ( int i = 0; i < vertsMarkers.Length; i++ )
-        {
-            vertsMarkers[ i ] = GameObject.CreatePrimitive( PrimitiveType.Sphere );
-            vertsMarkers[ i ].transform.localScale = new float3( 0.08f , 0.08f , 0.08f );
-        }
-    }
-    private void ResetTransform()
-    {
-        posA = new float3( -5 , 0 , 0 );
-        posB = float3.zero;
-
-        rotA = float3.zero;
-        rotB = float3.zero;
-
-        halfSizeA = new float3( 1 , 1 , 1 );
-        halfSizeB = new float3( 1 , 1 , 1 );
     }
 
     // SPHERE SPHERE
     private void HandleSpheres()
     {
         CollisionSphere();
-        DrawSpheres();
+        display.DrawSpheres( posA , posB , extentsA.x , extentsB.x );
     }
     private void CollisionSphere()
     {
         float3 pa = posA;
         float3 pb = posB;
-        float ra = halfSizeA.x;
-        float rb = halfSizeB.x;
+        float ra = extentsA.x;
+        float rb = extentsB.x;
 
         if ( ColPhysics.SpheresIntersect( pa , pb , ra , rb , out float distance ) )
         {
-            collisionFlag = true;
+            isColliding = true;
 
             if ( resolveCollisions )
             {
@@ -235,21 +120,21 @@ public class CollisionTester : MonoBehaviour
     private void HandleSphereCapsule()
     {
         CollisionSphereCapsule();
-        DrawSphereCapsule();
+        display.DrawSphereCapsule( posA , posB , rotB , extentsA.x , extentsB.x , extentsB.y );
     }
     private void CollisionSphereCapsule()
     {
         float3 spherePos = posA;
-        float sphereRadius = halfSizeA.x;
+        float sphereRadius = extentsA.x;
 
         float3 capsulePos = posB;
         float3 capsuleRot = rotB;
-        float capsuleLength = halfSizeB.y * 2;
-        float capsuleRadius = halfSizeB.x;
+        float capsuleLength = extentsB.y * 2;
+        float capsuleRadius = extentsB.x;
 
         if ( ColPhysics.SphereIntersectsCapsule( spherePos , sphereRadius , capsulePos , capsuleRot , capsuleLength , capsuleRadius , out float distance ) )
         {
-            collisionFlag = true;
+            isColliding = true;
 
             if ( resolveCollisions )
             {
@@ -262,55 +147,98 @@ public class CollisionTester : MonoBehaviour
     }
 
     // SPHERE BOX
-    private void HandleSphereOBB()
+    private void HandleSphereBox()
     {
-        CollisionSphereOBB();
-        DrawSphereBox();
+        CollisionSphereBox();
+        display.DrawSphereBox( posA , posB , rotB , extentsA.x , extentsB );
     }
-    private void CollisionSphereOBB()
+    private void CollisionSphereBox()
     {
         float3 spherePos = posA;
         float3 obbPos = posB;
         float3 obbRot = rotB;
-        float3 obbHalfSize = halfSizeB;
-        float sphereRadius = halfSizeA.x;
+        float3 obbHalfSize = extentsB;
+        float sphereRadius = extentsA.x;
 
         FixedList128<float3> vertices = ColPhysics.GetAABBVerticesOBB( obbPos , obbHalfSize ); // calculated once at startup forever stored with entity
         vertices = ColPhysics.GetRotatedVerticesOBB( vertices , obbPos , obbRot );
         FixedList128<float> extents = new FixedList128<float>(); // calculated once at startup forever stored with entity
-        extents.Add( halfSizeB.x );
-        extents.Add( halfSizeB.y );
-        extents.Add( halfSizeB.z );
+        extents.Add( extentsB.x );
+        extents.Add( extentsB.y );
+        extents.Add( extentsB.z );
 
         FixedList128<float3> axisNormals = ColPhysics.GetAxisNormalsOBB( vertices[ 0 ] , vertices[ 1 ] , vertices[ 3 ] , vertices[ 4 ] );
 
         if ( ColPhysics.SphereIntersectsBox( spherePos , sphereRadius , obbPos , axisNormals , extents , out float distance ) )
         {
-            collisionFlag = true;
+            isColliding = true;
 
             if ( resolveCollisions )
             {
-                ColPhysics.ResolveSphereOBBCollision( ref spherePos , sphereRadius , ref obbPos , distance );
+                ColPhysics.ResolveSphereBoxCollision( ref spherePos , sphereRadius , ref obbPos , distance );
                 posA = spherePos;
                 posB = obbPos;
             }
         }
     }
 
+    // SPHERE TRIANGLE
+    public void HandleSphereTriangle()
+    {
+        float3 spherePos = posA;
+        float sphereRadius = extentsA.x;
+        float3 triPos = posB;
+        float3 triSize = extentsB;
+        float3 triRot = rotB;
+
+        float3[] triangleVerts = GetVerticesOfTriangle( triPos , triSize , triRot ); // would already be stored
+        FixedList128<float3> triVertices = new FixedList128<float3>();
+        triVertices.Add( triangleVerts[ 0 ] );
+        triVertices.Add( triangleVerts[ 1 ] );
+        triVertices.Add( triangleVerts[ 2 ] );
+
+        if ( ColPhysics.SphereIntersectsOrientedTriangle( spherePos , sphereRadius , triVertices , out float3 closestPoint , out float distance ) )
+        {
+            isColliding = true;
+
+            if ( drawMarkers )
+                display.DrawMarker( closestPoint );
+
+            if ( resolveCollisions )
+                ColPhysics.ResolveSphereTriangleCollision( ref spherePos , sphereRadius , distance , closestPoint );
+
+            posA = spherePos;
+        }
+
+        display.DrawSphereTriangle( posA , posB , rotB , extentsA.x , extentsB );
+    }
+    private float3[] GetVerticesOfTriangle( float3 position , float3 halfSize , float3 rotation )
+    {
+        float3[] vertices = new float3[ 3 ];
+        vertices[ 0 ] = position + new float3( -halfSize.x , -halfSize.y , 0 );
+        vertices[ 1 ] = position + new float3( halfSize.x , -halfSize.y , 0 );
+        vertices[ 2 ] = position + new float3( 0 , halfSize.y , 0 );
+
+        for ( int i = 0; i < vertices.Length; i++ )
+            vertices[ i ] = ColPhysics.RotatePoint3D( vertices[ i ] , position , rotation.y , rotation.z , rotation.x );
+
+        return vertices;
+    }
+
     // CAPSULELOCK CAPSULELOCK
     private void HandleCapsulesLock()
     {
         CollisionCapsuleLock();
-        DrawCapsuleLock();
+        display.DrawCapsuleLock( posA , posB , extentsA.x , extentsB.x , extentsA.y , extentsB.y );
     }
     private void CollisionCapsuleLock()
     {
         float3 p1 = posA;
         float3 p2 = posB;
-        float r1 = halfSizeA.x;
-        float r2 = halfSizeB.x;
-        float h1 = halfSizeA.y*2;
-        float h2 = halfSizeB.y*2;
+        float r1 = extentsA.x;
+        float r2 = extentsB.x;
+        float h1 = extentsA.y*2;
+        float h2 = extentsB.y*2;
 
         if ( ColPhysics.ParallelLinesIntersectYAxis( p1.y , p2.y , h1 , h2 ) )
         {
@@ -319,7 +247,7 @@ public class CollisionTester : MonoBehaviour
 
             if ( ColPhysics.SpheresIntersect( s1 , s2 , r1 , r2 , out float distance ) )
             {
-                collisionFlag = true;
+                isColliding = true;
 
                 if ( resolveCollisions )
                 {
@@ -336,20 +264,20 @@ public class CollisionTester : MonoBehaviour
     private void HandleCapsuleCapsule()
     {
         CollisionCapsule();
-        DrawCapsules();
+        display.DrawCapsules( posA , posB , rotA , rotB , extentsA.x , extentsB.x , extentsA.y , extentsB.y );
     }
     private void CollisionCapsule()
     {
         float3 pa = posA;
         float3 pb = posB;
-        float lengthA = halfSizeA.y * 2;
-        float lengthB = halfSizeB.y * 2;
-        float radiusA = halfSizeA.x;
-        float radiusB = halfSizeB.x;
+        float lengthA = extentsA.y * 2;
+        float lengthB = extentsB.y * 2;
+        float radiusA = extentsA.x;
+        float radiusB = extentsB.x;
 
         if ( ColPhysics.CapsuleIntersectsCapsule( pa , pb , rotA , rotB , lengthA , lengthB , radiusA , radiusB , out float distance ) )
         {
-            collisionFlag = true;
+            isColliding = true;
 
             if ( resolveCollisions )
             {
@@ -361,182 +289,56 @@ public class CollisionTester : MonoBehaviour
         }
     }
 
-    // BOX BOX
-    private void HandleOBBOBB()
+    // CAPSULE BOX
+    private void HandleCapsuleBox()
     {
-        CollisionOBBOBB();
-        DrawBoxes();
+        CollisionCapsuleBox();
+        display.DrawCapsuleBox( posA , posB , rotA , rotB , extentsA.x , extentsA.y , extentsB );
     }
-    private void CollisionOBBOBB()
+    private void CollisionCapsuleBox()
     {
-        FixedList128<float3> verticesA = ColPhysics.GetAABBVerticesOBB( posA , halfSizeA );
-        FixedList128<float3> verticesB = ColPhysics.GetAABBVerticesOBB( posB , halfSizeB );
+        FixedList128<float3> verticesOBB = ColPhysics.GetAABBVerticesOBB( posB , extentsB );
+        verticesOBB = ColPhysics.GetRotatedVerticesOBB( verticesOBB , posB , rotB );
+        FixedList128<float3> normalAxesOBB = ColPhysics.GetAxisNormalsOBB( verticesOBB[ 0 ] , verticesOBB[ 1 ] , verticesOBB[ 3 ] , verticesOBB[ 4 ] );
+        FixedList128<float> exte = new FixedList128<float>();
+        exte.Add( extentsB.x );
+        exte.Add( extentsB.y );
+        exte.Add( extentsB.z );
+
+        float3x2 capsuleTips = ColPhysics.GetCapsuleEndPoints( posA , rotA , extentsA.y * 2 );
+        float3x2 capsuleSpheres = ColPhysics.GetCapsuleEndSpheres( capsuleTips.c0 , capsuleTips.c1 , extentsA.x );
+
+        if ( ColPhysics.CapsuleIntersectsBox( capsuleSpheres , posB , extentsA.x , normalAxesOBB , exte , out float distance ) )
+        {
+            isColliding = true;
+
+            if ( resolveCollisions )
+                ColPhysics.ResolveSphereBoxCollision( ref posA , extentsA.x , ref posB , distance );
+        }
+    }
+
+    // BOX BOX
+    private void HandeBoxBox()
+    {
+        CollisionBoxBox();
+        display.DrawBoxes( posA , posB , rotA , rotB , extentsA , extentsB );
+    }
+    private void CollisionBoxBox()
+    {
+        FixedList128<float3> verticesA = ColPhysics.GetAABBVerticesOBB( posA , extentsA );
+        FixedList128<float3> verticesB = ColPhysics.GetAABBVerticesOBB( posB , extentsB );
         verticesA = ColPhysics.GetRotatedVerticesOBB( verticesA , posA , rotA );
         verticesB = ColPhysics.GetRotatedVerticesOBB( verticesB , posB , rotB );
         FixedList512<float3> projectionAxes = ColPhysics.GetProjectionAxesOBBSAT( verticesA , verticesB );
 
-        if ( ColPhysics.BoxesIntersectSAT( projectionAxes , verticesA , verticesB , out float minOverlap , out float3 mtvAxis ) )
+        if ( ColPhysics.BoxIntersectsBox( projectionAxes , verticesA , verticesB , out float minOverlap , out float3 mtvAxis ) )
         {
-            collisionFlag = true;
+            isColliding = true;
 
             if ( resolveCollisions )
             {
                 ColPhysics.ResolveBoxCollision( ref posA , ref posB , minOverlap , mtvAxis );
             }
         }
-    }
-
-    // POINT TRIANGLE
-    public void HandleSphereTriangle()
-    {
-        float3 spherePos = posA;
-        float sphereRadius = halfSizeA.x;
-        float3 triPos = posB;
-        float3 triSize = halfSizeB;
-        float3 triRot = rotB;
-
-        float3[] triangleVerts = GetVerticesOfTriangle( triPos , triSize , triRot ); // would already be stored
-        FixedList128<float3> triVertices = new FixedList128<float3>();
-        triVertices.Add( triangleVerts[ 0 ] );
-        triVertices.Add( triangleVerts[ 1 ] );
-        triVertices.Add( triangleVerts[ 2 ] );
-
-        if ( ColPhysics.SphereIntersectsOrientedTriangle( spherePos , sphereRadius , triVertices , out float3 closestPoint , out float distance ) )
-        {
-            collisionFlag = true;
-
-            if ( resolveCollisions )
-            {
-                ColPhysics.ResolveSphereTriangleCollision( ref spherePos , sphereRadius , distance , closestPoint );
-            }
-        }
-
-
-        /*if ( inTriangle )
-        {
-            float distance = math.distance( posA , closestPoint );
-
-            if ( distance < halfSizeA.x )
-            {
-                collisionFlag = true;
-
-                if ( resolveCollisions )
-                {
-                    float3 direction = math.normalize( posA - closestPoint );
-                    float displacement = distance - halfSizeA.x;
-
-                    posA -= direction * displacement;
-                }
-            }
-        }*/
-
-        DrawSphereTriangle();
-    }
-
-    // HELPERS
-    private float3[] GetVerticesOfTriangle( float3 position , float3 halfSize , float3 rotation )
-    {
-        float3[] vertices = new float3[ 3 ];
-        vertices[ 0 ] = position + new float3( -halfSize.x , -halfSize.y , 0 );
-        vertices[ 1 ] = position + new float3( halfSize.x , -halfSize.y , 0 );
-        vertices[ 2 ] = position + new float3( 0 , halfSize.y , 0 );
-
-        for ( int i = 0; i < vertices.Length; i++ )
-        {
-            vertices[ i ] = ColPhysics.RotatePoint3D( vertices[ i ] , position , rotation.y , rotation.z , rotation.x );
-        }
-
-        return vertices;
-    }
-
-    // DRAW FUNCTIONS
-    private void DrawSpheres()
-    {
-        shapeA.transform.position = posA;
-        shapeB.transform.position = posB;
-
-        shapeA.transform.localScale = halfSizeA * 2;
-        shapeB.transform.localScale = halfSizeB * 2;
-    }
-    private void DrawSphereCapsule()
-    {
-        shapeA.transform.position = posA;
-        shapeB.transform.position = posB;
-
-        float xRotation = ColPhysics.DegreesToRadians( 90 );
-        shapeB.transform.rotation = quaternion.EulerXYZ( rotB.x + xRotation , rotB.y , rotB.z );
-
-        shapeA.transform.localScale = new float3( halfSizeA.x * 2 , halfSizeA.x * 2 , halfSizeA.x * 2 );
-        shapeB.transform.localScale = new float3( halfSizeB.x * 2 , halfSizeB.y * 2 , halfSizeB.x * 2 );
-    }
-    private void DrawSphereBox()
-    {
-        shapeA.transform.position = posA;
-        shapeB.transform.position = posB;
-
-        shapeB.transform.rotation = quaternion.EulerXYZ( rotB );
-
-        shapeA.transform.localScale = halfSizeA * 2;
-        shapeB.transform.localScale = halfSizeB * 2;
-    }
-    private void DrawCapsuleLock()
-    {
-        shapeA.transform.position = posA;
-        shapeB.transform.position = posB;
-
-        shapeA.transform.localScale = new float3( halfSizeA.x * 2 , halfSizeA.y * 2 , halfSizeA.x * 2 );
-        shapeB.transform.localScale = new float3( halfSizeB.x * 2 , halfSizeB.y * 2 , halfSizeB.x * 2 );
-    }
-    private void DrawCapsules()
-    {
-        shapeA.transform.position = posA;
-        shapeB.transform.position = posB;
-
-        float xRotation = ColPhysics.DegreesToRadians( 90 );
-        shapeA.transform.rotation = quaternion.EulerXYZ( rotA.x + xRotation , rotA.y , rotA.z );
-        shapeB.transform.rotation = quaternion.EulerXYZ( rotB.x + xRotation , rotB.y , rotB.z );
-
-        shapeA.transform.localScale = new float3( halfSizeA.x * 2 , halfSizeA.y * 2 , halfSizeA.x * 2 );
-        shapeB.transform.localScale = new float3( halfSizeB.x * 2 , halfSizeB.y * 2 , halfSizeB.x * 2 );
-    }
-    private void DrawBoxes()
-    {
-        shapeA.transform.position = posA;
-        shapeB.transform.position = posB;
-
-        shapeA.transform.rotation = quaternion.EulerXYZ( rotA );
-        shapeB.transform.rotation = quaternion.EulerXYZ( rotB );
-
-        shapeA.transform.localScale = halfSizeA * 2;
-        shapeB.transform.localScale = halfSizeB * 2;
-    }
-    private void DrawSphereTriangle()
-    {
-        shapeA.transform.position = posA;
-        shapeB.transform.position = posB;
-        shapeB.transform.rotation = quaternion.EulerXYZ( new float3( rotB.x , rotB.y , rotB.z ) );
-        shapeA.transform.localScale = halfSizeA * 2;
-
-        //closestPointMarker.transform.localScale = new float3( 0.1f , 0.1f , 0.1f );
-    }
-    private void SetupTriangleMesh()
-    {
-        Mesh mesh = new Mesh();
-        Vector3[] vertices = new Vector3[ 3 ];
-        vertices[ 0 ] = posB + new float3( -halfSizeB.x , -halfSizeB.y , 0 );
-        vertices[ 1 ] = posB + new float3( 0 , halfSizeB.y , 0 );
-        vertices[ 2 ] = posB + new float3( halfSizeB.x , -halfSizeB.y , 0 );
-        int[] triangles = new int[ 3 ];
-        triangles[ 0 ] = 0;
-        triangles[ 1 ] = 1;
-        triangles[ 2 ] = 2;
-        mesh.vertices = vertices;
-        mesh.triangles = triangles;
-        mesh.RecalculateNormals();
-        shapeB.AddComponent<MeshFilter>();
-        shapeB.AddComponent<MeshRenderer>();
-        shapeB.GetComponent<MeshFilter>().mesh = mesh;
-        Material mat = new Material( Shader.Find( "Standard" ) );
-        shapeB.GetComponent<MeshRenderer>().material = mat;
     }
 }
